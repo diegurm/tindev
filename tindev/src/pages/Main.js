@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client';
+import AsyncStorage from '@react-native-community/async-storage';
 import {
   View,
   Text,
@@ -7,20 +9,19 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import AsyncStorage from '@react-native-community/async-storage';
 
 import logo from '../assets/logo.png';
 import like from '../assets/like.png';
 import dislike from '../assets/dislike.png';
+import itsamatch from '../assets/itsamatch.png';
 
 import api from '../services/api';
 
 export default function Main({ navigation }) {
   const currentId = navigation.getParam('user');
 
-  console.log(currentId);
-
   const [users, setUsers] = useState([]);
+  const [matchDev, setMatchDev] = useState(false);
 
   useEffect(() => {
     (async function loadUsers() {
@@ -32,6 +33,14 @@ export default function Main({ navigation }) {
 
       setUsers(response.data);
     })();
+  }, [currentId]);
+
+  useEffect(() => {
+    const socket = io('http://localhost:3333', {
+      query: { user: currentId },
+    });
+
+    socket.on('match', dev => setMatchDev(dev));
   }, [currentId]);
 
   async function handleLike() {
@@ -64,6 +73,12 @@ export default function Main({ navigation }) {
     navigation.navigate('Login');
   }
 
+  function getStyleMatch() {
+    return {
+      zIndex: users.length + 1,
+    };
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity onPress={handleLogout}>
@@ -78,11 +93,7 @@ export default function Main({ navigation }) {
             <View
               key={user._id}
               style={[styles.card, { zIndex: users.length - index }]}>
-              <Image
-                style={styles.avatar}
-                source={{
-                  uri: user.avatar,
-                }}></Image>
+              <Image style={styles.avatar} source={{ uri: user.avatar }} />
               <View style={styles.footer}>
                 <Text style={styles.name}>{user.name}</Text>
                 <Text style={styles.bio} numberOfLines={3}>
@@ -93,6 +104,7 @@ export default function Main({ navigation }) {
           ))
         )}
       </View>
+
       {users.length > 0 && (
         <View style={styles.buttonsContainer}>
           <TouchableOpacity style={styles.button} onPress={handleDislike}>
@@ -100,6 +112,20 @@ export default function Main({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={handleLike}>
             <Image source={like} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {matchDev && (
+        <View style={[styles.matchContainer, getStyleMatch()]}>
+          <Image style={styles.matchImage} source={itsamatch} />
+          <Image style={styles.matchAvatar} source={{ uri: matchDev.avatar }} />
+
+          <Text style={styles.matchName}>{matchDev.name}</Text>
+          <Text style={styles.matchBio}>{matchDev.bio}</Text>
+
+          <TouchableOpacity onPress={() => setMatchDev(null)}>
+            <Text style={styles.closeMatch}>FECHAR</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -116,7 +142,7 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    marginTop: 20,
+    marginTop: 30,
   },
 
   empty: {
@@ -149,11 +175,10 @@ const styles = StyleSheet.create({
   avatar: {
     flex: 1,
     height: 300,
-    backgroundColor: '#DDD',
   },
 
   footer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF',
     paddingHorizontal: 20,
     paddingVertical: 15,
   },
@@ -174,7 +199,9 @@ const styles = StyleSheet.create({
   buttonsContainer: {
     flexDirection: 'row',
     marginBottom: 30,
+    zIndex: 0,
   },
+
   button: {
     width: 50,
     height: 50,
@@ -191,5 +218,49 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
+  },
+
+  matchContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  matchImage: {
+    height: 60,
+    resizeMode: 'contain',
+  },
+
+  matchAvatar: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 5,
+    borderColor: '#FFF',
+    marginVertical: 30,
+  },
+
+  matchName: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+
+  matchBio: {
+    marginTop: 10,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 30,
+  },
+
+  closeMatch: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 30,
+    fontWeight: 'bold',
   },
 });

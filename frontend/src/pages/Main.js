@@ -1,24 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import * as io from "socket.io-client";
 
-import './Main.css';
+import "./Main.css";
 
-import api from '../services/api';
+import api from "../services/api";
 
-import logo from '../assets/logo.svg';
-import dislike from '../assets/dislike.svg';
-import like from '../assets/like.svg';
+import logo from "../assets/logo.svg";
+import dislike from "../assets/dislike.svg";
+import like from "../assets/like.svg";
+import itsamatch from "../assets/itsamatch.png";
 
 export default function Main({ match }) {
   const currentId = match.params.id;
 
   const [users, setUsers] = useState([]);
+  const [matchDev, setMatchDev] = useState(false);
 
   useEffect(() => {
     (async function loadUsers() {
-      const response = await api.get('devs', {
+      const response = await api.get("devs", {
         headers: {
-          user: currentId,
+          user: currentId
         }
       });
 
@@ -26,10 +29,18 @@ export default function Main({ match }) {
     })();
   }, [currentId]);
 
+  useEffect(() => {
+    const socket = io("http://localhost:3333", {
+      query: { user: currentId }
+    });
+
+    socket.on("match", dev => setMatchDev(dev));
+  }, [currentId]);
+
   async function handleLike(id) {
     await api.post(`devs/${id}/likes`, null, {
       headers: {
-        user: currentId,
+        user: currentId
       }
     });
 
@@ -39,7 +50,7 @@ export default function Main({ match }) {
   async function handleDislike(id) {
     await api.post(`devs/${id}/dislikes`, null, {
       headers: {
-        user: currentId,
+        user: currentId
       }
     });
 
@@ -74,8 +85,22 @@ export default function Main({ match }) {
           ))}
         </ul>
       ) : (
-          <div className="empty">Acabou :(</div>
-        )}
+        <div className="empty">Acabou :(</div>
+      )}
+
+      {matchDev && (
+        <div className="match-container">
+          <img src={itsamatch} alt="" />
+
+          <img className="avatar" src={matchDev.avatar} alt="" />
+          <strong>{matchDev.name}</strong>
+          <p>{matchDev.bio}</p>
+
+          <button type="button" onClick={() => setMatchDev(false)}>
+            Fechar
+          </button>
+        </div>
+      )}
     </div>
-  )
+  );
 }
